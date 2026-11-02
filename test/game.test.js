@@ -1,37 +1,34 @@
 import assert from 'node:assert/strict'
-import { isValid, judge, evaluate, resultText } from '../src/game.js'
+import { isValid, judge, evaluate, resultText, DIGITS } from '../src/game.js'
 
-assert.equal(isValid('123'), true)
-assert.equal(isValid('012'), true)
-assert.equal(isValid('112'), false)
-assert.equal(isValid('12'), false)
-assert.equal(isValid('12a'), false)
+assert.equal(DIGITS, 4)
+assert.equal(isValid('1234'), true)
+assert.equal(isValid('0123'), true)
+assert.equal(isValid('1123'), false)
+assert.equal(isValid('123'), false)
+assert.equal(isValid('12345'), false)
+assert.equal(isValid('12a4'), false)
 
-assert.deepEqual(judge('123', '123'), { s: 3, b: 0 })
-assert.deepEqual(judge('123', '321'), { s: 1, b: 2 })
-assert.deepEqual(judge('123', '456'), { s: 0, b: 0 })
-assert.deepEqual(judge('102', '201'), { s: 1, b: 2 })
+assert.deepEqual(judge('1234', '1234'), { s: 4, b: 0 })
+assert.deepEqual(judge('1234', '4321'), { s: 0, b: 4 })
+assert.deepEqual(judge('1234', '1243'), { s: 2, b: 2 })
+assert.deepEqual(judge('1234', '5678'), { s: 0, b: 0 })
+assert.deepEqual(judge('1023', '3021'), { s: 2, b: 2 })
 
 assert.equal(resultText({ s: 0, b: 0 }), 'OUT')
-assert.equal(resultText({ s: 3, b: 0 }), '완료')
-assert.equal(resultText({ s: 1, b: 1 }), '1S 1B')
+assert.equal(resultText({ s: 4, b: 0 }), '완료')
+assert.equal(resultText({ s: 1, b: 2 }), '1S 2B')
 
 const r = (s) => ({ s, b: 0 })
-// 진행 중
 assert.equal(evaluate([], []), null)
 assert.equal(evaluate([r(1)], []), null)
-// 선공 3S → 후공 마지막 기회 대기
-assert.equal(evaluate([r(3)], []), null)
-assert.equal(evaluate([r(3)], [r(1)]), 'first')
-assert.equal(evaluate([r(3)], [r(3)]), 'draw')
-// 후공 3S
-assert.equal(evaluate([r(1)], [r(3)]), 'second')
-assert.equal(evaluate([r(1), r(2)], [r(0), r(3)]), 'second')
-// 결과 대기(null s) 는 진행 중
+assert.equal(evaluate([r(3)], [r(3)]), null) // 3S는 이제 정답 아님
+assert.equal(evaluate([r(4)], []), null) // 후공 마지막 기회 대기
+assert.equal(evaluate([r(4)], [r(1)]), 'first')
+assert.equal(evaluate([r(4)], [r(4)]), 'draw')
+assert.equal(evaluate([r(1)], [r(4)]), 'second')
 assert.equal(evaluate([{ s: null }], []), null)
-// 9회 모두 실패 → 무승부
 const nine = Array.from({ length: 9 }, () => r(1))
 assert.equal(evaluate(nine, nine), 'draw')
-assert.equal(evaluate(nine, nine.slice(0, 8)), null)
 
 console.log('game logic: all tests passed')

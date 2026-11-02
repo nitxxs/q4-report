@@ -3,7 +3,7 @@ import Shell from './Shell'
 import { bossCells } from './boss'
 import { useRoom, myId } from './useRoom'
 import { transportMode, serverHost, configWarning } from './transport'
-import { isValid, resultText, MAX_INNINGS } from './game'
+import { isValid, resultText, MAX_INNINGS, DIGITS } from './game'
 
 const FILE_NAME = 'Q4_실적분석_최종.xlsx'
 const today = new Date().toISOString().slice(0, 10)
@@ -37,7 +37,7 @@ function renderTable(c, left, right, leftTag, rightTag, leftLabel, rightLabel) {
   const H = ['이닝', '구분', leftLabel, 'S', 'B', '판정', '', '구분', rightLabel, 'S', 'B', '판정']
   'ABCDEFGHIJKL'.split('').forEach((col, i) => H[i] && (c[col + 12] = hdr(H[i], 'center')))
   const sum = { ls: 0, lb: 0, rs: 0, rb: 0 }
-  const tone = (x) => 'center ' + (x.s === 3 ? 'up bold' : x.s === 0 && x.b === 0 ? 'down' : '')
+  const tone = (x) => 'center ' + (x.s === DIGITS ? 'up bold' : x.s === 0 && x.b === 0 ? 'down' : '')
   for (let i = 0; i < MAX_INNINGS; i++) {
     const r = 13 + i
     c['A' + r] = { v: `${i + 1}회`, cls: 'center' }
@@ -142,7 +142,7 @@ export default function App() {
   }
 
   const submitSecret = () => {
-    if (!isValid(secretInput)) return setMsg('기준값은 서로 다른 숫자 3자리여야 합니다.')
+    if (!isValid(secretInput)) return setMsg(`기준값은 서로 다른 숫자 ${DIGITS}자리여야 합니다.`)
     g.confirmSecret(secretInput)
     setSecretInput('')
     setMsg('')
@@ -150,13 +150,13 @@ export default function App() {
 
   const submitGuess = () => {
     if (!g.myTurn) return
-    if (!isValid(guessInput)) return setMsg('서로 다른 숫자 3자리를 입력하세요.')
+    if (!isValid(guessInput)) return setMsg(`서로 다른 숫자 ${DIGITS}자리를 입력하세요.`)
     g.guess(guessInput)
     setGuessInput('')
     setMsg('')
   }
 
-  const digits = (v) => v.replace(/\D/g, '').slice(0, 3)
+  const digits = (v) => v.replace(/\D/g, '').slice(0, DIGITS)
 
   // ---------- 셀 구성 ----------
   const c = {}
@@ -261,17 +261,17 @@ export default function App() {
       if (!g.ready) {
         c.B8 = {
           cls: 'editable',
-          input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: 3, inputMode: 'numeric', placeholder: '3자리' },
+          input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: DIGITS, inputMode: 'numeric', placeholder: '3자리' },
         }
         c.C8 = link('확정', submitSecret, 'btn')
       } else {
-        c.B8 = { v: '●●●', cls: 'num', f: g.secret }
+        c.B8 = { v: '●'.repeat(DIGITS), cls: 'num', f: g.secret }
         c.C8 = { v: '확정됨', cls: 'muted' }
       }
 
       let status = ''
       if (!g.opp) status = '검토자 참여 대기중 — [링크 복사]로 공유하세요.'
-      else if (!g.ready) status = '기준값(서로 다른 숫자 3자리)을 입력하고 확정하세요.'
+      else if (!g.ready) status = `기준값(서로 다른 숫자 ${DIGITS}자리)을 입력하고 확정하세요.`
       else if (!g.started) status = '검토자 기준값 입력 대기중…'
       else if (g.result) status = '검토 완료'
       else status = g.myTurn ? '▶ 입력 차례입니다. B23에 입력 후 Enter' : '검토자 입력 대기중…'
@@ -296,10 +296,10 @@ export default function App() {
           value: guessInput,
           onChange: (v) => setGuessInput(digits(v)),
           onEnter: submitGuess,
-          maxLength: 3,
+          maxLength: DIGITS,
           inputMode: 'numeric',
           disabled: !g.myTurn,
-          placeholder: g.myTurn ? '3자리' : '',
+          placeholder: g.myTurn ? `${DIGITS}자리` : '',
         },
       }
       c.C23 = link('제출', submitGuess, 'btn' + (g.myTurn ? '' : ' off'))
