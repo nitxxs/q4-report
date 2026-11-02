@@ -153,6 +153,7 @@ export default function App() {
       cls: g.conn === 'SUBSCRIBED' && !g.full ? '' : 'down',
     }
     c.F6 = { v: `${g.round}차`, cls: 'muted' }
+    if (g.connErr) c.H6 = { v: g.connErr, cls: 'down', span: 6 }
 
     // 기준값(비밀 숫자)
     c.A8 = hdr('기준값')

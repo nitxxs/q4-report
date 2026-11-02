@@ -6,6 +6,7 @@ export const myId = Math.random().toString(36).slice(2, 10)
 
 export function useRoom(room, name) {
   const [conn, setConn] = useState('CONNECTING')
+  const [connErr, setConnErr] = useState('')
   const [peers, setPeers] = useState([])
   const [round, setRound] = useState(1)
   const [ready, setReady] = useState(false)
@@ -31,7 +32,10 @@ export function useRoom(room, name) {
     if (!room) return
     const ch = joinRoom(room, myId, {
       onPresence: setPeers,
-      onStatus: setConn,
+      onStatus: (st, e) => {
+        setConn(st)
+        setConnErr(st === 'SUBSCRIBED' ? '' : e || '')
+      },
       onEvent: (type, d) => {
         const cur = S.current
         if (!d || d.round !== cur.round) return
@@ -130,6 +134,7 @@ export function useRoom(room, name) {
 
   return {
     conn,
+    connErr,
     full,
     opp,
     round,

@@ -34,12 +34,14 @@ function joinSupabase(room, myId, handlers) {
   ch.on('broadcast', { event: 'msg' }, ({ payload }) => {
     handlers.onEvent(payload.type, payload.data, payload.from)
   })
-  ch.subscribe((status) => {
+  ch.subscribe((status, err) => {
     if (status === 'SUBSCRIBED') {
       subscribed = true
       if (state) ch.track(state)
+    } else if (err) {
+      console.error('[realtime]', status, err)
     }
-    handlers.onStatus?.(status)
+    handlers.onStatus?.(status, err?.message || (err ? String(err) : ''))
   })
 
   return {
