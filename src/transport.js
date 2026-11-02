@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = (import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/\/+$/, '')
+// 'https://xxx.supabase.co/rest/v1/' 처럼 경로가 붙어 있어도 프로젝트 주소만 사용
+const RAW_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim()
+const URL = RAW_URL.match(/^https?:\/\/[^/]+/)?.[0] || RAW_URL
 const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
 
 // 화면 진단용 (키는 표시하지 않음)
