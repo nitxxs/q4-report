@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import ChatPane from './ChatPane'
 
 export const COLS = 'ABCDEFGHIJKLMNOP'.split('')
 export const WIDTHS = [64, 92, 92, 52, 52, 92, 28, 64, 92, 52, 52, 92, 80, 80, 80, 80]
@@ -14,7 +15,7 @@ function Icon({ d, w = 16 }) {
   )
 }
 
-function Ribbon() {
+function Ribbon({ chat }) {
   return (
     <div className="ribbon">
       <div className="ribbon-tabs">
@@ -22,6 +23,11 @@ function Ribbon() {
           <span key={t} className={t === '홈' ? 'rtab active' : t === '파일' ? 'rtab file' : 'rtab'}>{t}</span>
         ))}
         <span className="rtab-spacer" />
+        {chat && (
+          <span className={'rtab-memo' + (chat.visible ? ' on' : '')} onClick={chat.toggle}>
+            메모{chat.unread > 0 && <span className="badge">{chat.unread > 9 ? '9+' : chat.unread}</span>}
+          </span>
+        )}
         <span className="rtab-share">공유</span>
       </div>
       <div className="ribbon-body">
@@ -119,7 +125,7 @@ function cellText(spec) {
   return typeof spec.v === 'string' || typeof spec.v === 'number' ? String(spec.v) : ''
 }
 
-export default function Shell({ fileName, cells, active, setActive, sheet, setSheet, sheets, status, user }) {
+export default function Shell({ fileName, cells, active, setActive, sheet, setSheet, sheets, status, user, chat }) {
   const inputRefs = useRef({})
   const spec = cells[active]
   const editable = spec?.input && spec.input.type !== 'password' && !spec.input.disabled
@@ -204,7 +210,7 @@ export default function Shell({ fileName, cells, active, setActive, sheet, setSh
           <span className="win close">✕</span>
         </div>
       </div>
-      <Ribbon />
+      <Ribbon chat={chat} />
       <div className="formulabar">
         <div className="namebox">{active}</div>
         <div className="fx-icons">
@@ -224,6 +230,7 @@ export default function Shell({ fileName, cells, active, setActive, sheet, setSh
           <div className="fx-input ro">{cellText(spec)}</div>
         )}
       </div>
+      <div className="main-area">
       <div className="grid-wrap">
         <table className="grid">
           <colgroup>
@@ -242,6 +249,8 @@ export default function Shell({ fileName, cells, active, setActive, sheet, setSh
           </thead>
           <tbody>{rows}</tbody>
         </table>
+      </div>
+      {chat?.visible && <ChatPane chat={chat} />}
       </div>
       <div className="sheetbar">
         <span className="nav">◀</span>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Shell from './Shell'
 import { bossCells } from './boss'
-import { useRoom } from './useRoom'
+import { useRoom, myId } from './useRoom'
 import { transportMode, serverHost, configWarning } from './transport'
 import { isValid, resultText, MAX_INNINGS } from './game'
 
@@ -33,6 +33,43 @@ const link = (v, onClick, extra = '') => ({ v, onClick, cls: 'link ' + extra })
 const hdr = (v, extra = '') => ({ v, cls: 'hdr ' + extra })
 const muted = (v, span = 10) => ({ v, cls: 'muted', span })
 
+function renderTable(c, left, right, leftTag, rightTag, leftLabel, rightLabel) {
+  const H = ['이닝', '구분', leftLabel, 'S', 'B', '판정', '', '구분', rightLabel, 'S', 'B', '판정']
+  'ABCDEFGHIJKL'.split('').forEach((col, i) => H[i] && (c[col + 12] = hdr(H[i], 'center')))
+  const sum = { ls: 0, lb: 0, rs: 0, rb: 0 }
+  const tone = (x) => 'center ' + (x.s === 3 ? 'up bold' : x.s === 0 && x.b === 0 ? 'down' : '')
+  for (let i = 0; i < MAX_INNINGS; i++) {
+    const r = 13 + i
+    c['A' + r] = { v: `${i + 1}회`, cls: 'center' }
+    c['B' + r] = { v: leftTag, cls: 'center muted' }
+    c['H' + r] = { v: rightTag, cls: 'center muted' }
+    const m = left[i]
+    const t = right[i]
+    if (m) {
+      c['C' + r] = { v: m.guess, cls: 'num' }
+      c['D' + r] = { v: m.s ?? '', cls: 'num' }
+      c['E' + r] = { v: m.b ?? '', cls: 'num' }
+      c['F' + r] = { v: resultText(m), cls: tone(m), f: `=JUDGE(C${r},검토자!$B$8)` }
+      sum.ls += m.s || 0
+      sum.lb += m.b || 0
+    }
+    if (t) {
+      c['I' + r] = { v: t.guess, cls: 'num' }
+      c['J' + r] = { v: t.s ?? '', cls: 'num' }
+      c['K' + r] = { v: t.b ?? '', cls: 'num' }
+      c['L' + r] = { v: resultText(t), cls: tone(t), f: `=JUDGE(I${r},$B$8)` }
+      sum.rs += t.s || 0
+      sum.rb += t.b || 0
+    }
+  }
+  c.A22 = { v: '합계', cls: 'total center' }
+  ;['B', 'C', 'F', 'H', 'I', 'L'].forEach((k) => (c[k + 22] = { v: '', cls: 'total' }))
+  c.D22 = { v: sum.ls, cls: 'num total', f: '=SUM(D13:D21)' }
+  c.E22 = { v: sum.lb, cls: 'num total', f: '=SUM(E13:E21)' }
+  c.J22 = { v: sum.rs, cls: 'num total', f: '=SUM(J13:J21)' }
+  c.K22 = { v: sum.rb, cls: 'num total', f: '=SUM(K13:K21)' }
+}
+
 export default function App() {
   const [sheet, setSheet] = useState('main')
   const [active, setActive] = useState('B4')
@@ -43,7 +80,16 @@ export default function App() {
   const [guessInput, setGuessInput] = useState('')
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
+  const [chatOpen, setChatOpen] = useState(true)
+  const [seen, setSeen] = useState(0)
   const g = useRoom(room, name)
+  const isSpec = g.role === 'spectator'
+  const chatVisible = !!room && chatOpen && sheet === 'main'
+  const realChat = g.chat.filter((m) => !m.sys && m.from)
+  useEffect(() => {
+    if (chatVisible) setSeen(realChat.length)
+  }, [chatVisible, realChat.length])
+  const unread = Math.max(0, realChat.length - seen)
 
   useEffect(() => {
     document.title = FILE_NAME
@@ -64,8 +110,8 @@ export default function App() {
   }, [g.myTurn, sheet])
 
   useEffect(() => {
-    if (room && !g.ready) setActive('B8')
-  }, [room, g.ready, g.round])
+    if (room && !g.ready && g.role === 'player') setActive('B8')
+  }, [room, g.ready, g.round, g.role])
 
   const enter = (code) => {
     const n = name.trim()
@@ -139,7 +185,10 @@ export default function App() {
     else c.A11 = muted(`※ 서버: ${serverHost}`)
     if (configWarning) c.A13 = { v: '⚠ ' + configWarning, cls: 'down', span: 10 }
   } else {
-    const oppName = g.opp?.name || '대기중'
+    const host = g.players[0]
+    const guest = g.players[1]
+    const leftName = isSpec ? host?.name : name
+    const rightName = isSpec ? guest?.name : g.opp?.name
     c.A4 = hdr('문서코드')
     c.B4 = { v: room, cls: 'bold' }
     c.C4 = link(copied ? '복사됨' : '링크 복사', copyLink)
@@ -148,118 +197,132 @@ export default function App() {
       history.replaceState(null, '', location.pathname)
     })
     c.A5 = hdr('작성자')
-    c.B5 = { v: name }
+    c.B5 = { v: leftName || '' }
     c.C5 = hdr('검토자')
-    c.D5 = { v: oppName, span: 2, cls: g.opp ? '' : 'muted' }
+    c.D5 = { v: rightName || '대기중', span: 2, cls: rightName ? '' : 'muted' }
     c.A6 = hdr('상태')
     c.B6 = {
-      v: g.full ? '정원 초과(2인 문서)' : g.conn === 'SUBSCRIBED' ? '동기화됨' : g.conn === 'CONNECTING' ? '연결 중…' : `오류(${g.conn})`,
+      v: g.full
+        ? '정원 초과(최대 4명)'
+        : g.conn === 'SUBSCRIBED'
+          ? isSpec
+            ? '동기화됨 · 읽기 전용'
+            : '동기화됨'
+          : g.conn === 'CONNECTING'
+            ? '연결 중…'
+            : `오류(${g.conn})`,
       span: 2,
       cls: g.conn === 'SUBSCRIBED' && !g.full ? '' : 'down',
     }
-    c.F6 = { v: `${g.round}차`, cls: 'muted' }
+    c.F6 = { v: `${isSpec ? g.spectate?.round || 1 : g.round}차`, cls: 'muted' }
     if (g.connErr) c.H6 = { v: `${g.connErr} (${serverHost})`, cls: 'down', span: 8 }
+    c.A7 = hdr('참조')
+    c.B7 = {
+      v: g.spectators.length ? g.spectators.map((p) => p.name + (p.id === myId ? '(나)' : '')).join(', ') : '없음',
+      span: 4,
+      cls: g.spectators.length ? '' : 'muted',
+    }
 
-    // 기준값(비밀 숫자)
-    c.A8 = hdr('기준값')
-    if (!g.ready) {
-      c.B8 = {
-        cls: 'editable',
-        input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: 3, inputMode: 'numeric', placeholder: '3자리' },
+    if (isSpec || g.full) {
+      const sp = g.spectate
+      c.A8 = hdr('기준값')
+      c.B8 = { v: '비공개', cls: 'muted' }
+      c.A9 = {
+        v: g.full ? '문서 정원(4명)이 가득 찼습니다.' : '참조 권한(읽기 전용)으로 열람 중입니다. 메모만 작성할 수 있습니다.',
+        cls: 'status',
+        span: 10,
       }
-      c.C8 = link('확정', submitSecret, 'btn')
+      if (sp) {
+        const leftTag = sp.firstIsHost ? '초' : '말'
+        const rightTag = sp.firstIsHost ? '말' : '초'
+        renderTable(c, sp.hostList, sp.guestList, leftTag, rightTag, `${sp.host?.name || ''} 값`, `${sp.guest?.name || ''} 값`)
+        c.A23 = hdr('입력')
+        c.B23 = { v: '읽기 전용', cls: 'muted', span: 2 }
+        if (sp.winner) {
+          c.H23 = hdr('결과')
+          c.I23 = {
+            v: sp.winner === 'draw' ? '보류 (무승부)' : `${(sp.winner === 'host' ? sp.host : sp.guest)?.name} 승인`,
+            span: 3,
+            cls: 'bold up',
+          }
+          c.H24 = hdr('기준값')
+          c.I24 = { v: `${sp.host?.name}: ${sp.hostSecret ?? '…'} / ${sp.guest?.name}: ${sp.guestSecret ?? '…'}`, span: 4 }
+        } else if (!sp.started) {
+          c.H23 = { v: '선수 기준값 입력 대기중…', cls: 'status', span: 5 }
+        }
+      } else if (isSpec) {
+        renderTable(c, [], [], '초', '말', `${host?.name || ''} 값`, `${guest?.name || ''} 값`)
+        c.A23 = hdr('입력')
+        c.B23 = { v: '읽기 전용', cls: 'muted', span: 2 }
+      }
     } else {
-      c.B8 = { v: '●●●', cls: 'num', f: g.secret }
-      c.C8 = { v: '확정됨', cls: 'muted' }
-    }
-
-    let status = ''
-    if (!g.opp) status = '검토자 참여 대기중 — [링크 복사]로 공유하세요.'
-    else if (!g.ready) status = '기준값(서로 다른 숫자 3자리)을 입력하고 확정하세요.'
-    else if (!g.started) status = '검토자 기준값 입력 대기중…'
-    else if (g.result) status = '검토 완료'
-    else status = g.myTurn ? '▶ 입력 차례입니다. B23에 입력 후 Enter' : '검토자 입력 대기중…'
-    c.A9 = muted(status)
-    c.A9.cls = 'status'
-    if (g.opp && g.opp.round > g.round) {
-      c.A10 = { v: '검토자가 재검토를 요청했습니다.', cls: 'status', span: 3 }
-      c.D10 = link('수락', () => {
-        g.acceptRematch()
-        setMsg('')
-      }, 'btn')
-    }
-
-    // 표
-    const H = ['이닝', '구분', '제출값', 'S', 'B', '판정', '', '구분', '검토자 값', 'S', 'B', '판정']
-    'ABCDEFGHIJKL'.split('').forEach((col, i) => H[i] && (c[col + 12] = hdr(H[i], 'center')))
-    const myTag = g.firstIsMe ? '초' : '말'
-    const opTag = g.firstIsMe ? '말' : '초'
-    const sum = { ms: 0, mb: 0, ts: 0, tb: 0 }
-    for (let i = 0; i < MAX_INNINGS; i++) {
-      const r = 13 + i
-      c['A' + r] = { v: `${i + 1}회`, cls: 'center' }
-      const m = g.mine[i]
-      const t = g.theirs[i]
-      c['B' + r] = { v: myTag, cls: 'center muted' }
-      c['H' + r] = { v: opTag, cls: 'center muted' }
-      if (m) {
-        c['C' + r] = { v: m.guess, cls: 'num' }
-        c['D' + r] = { v: m.s ?? '', cls: 'num' }
-        c['E' + r] = { v: m.b ?? '', cls: 'num' }
-        c['F' + r] = { v: resultText(m), cls: 'center ' + (m.s === 3 ? 'up bold' : m.s === 0 && m.b === 0 ? 'down' : ''), f: `=JUDGE(C${r},검토자!$B$8)` }
-        sum.ms += m.s || 0
-        sum.mb += m.b || 0
+      // 기준값(비밀 숫자)
+      c.A8 = hdr('기준값')
+      if (!g.ready) {
+        c.B8 = {
+          cls: 'editable',
+          input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: 3, inputMode: 'numeric', placeholder: '3자리' },
+        }
+        c.C8 = link('확정', submitSecret, 'btn')
+      } else {
+        c.B8 = { v: '●●●', cls: 'num', f: g.secret }
+        c.C8 = { v: '확정됨', cls: 'muted' }
       }
-      if (t) {
-        c['I' + r] = { v: t.guess, cls: 'num' }
-        c['J' + r] = { v: t.s, cls: 'num' }
-        c['K' + r] = { v: t.b, cls: 'num' }
-        c['L' + r] = { v: resultText(t), cls: 'center ' + (t.s === 3 ? 'up bold' : t.s === 0 && t.b === 0 ? 'down' : ''), f: `=JUDGE(I${r},$B$8)` }
-        sum.ts += t.s
-        sum.tb += t.b
+
+      let status = ''
+      if (!g.opp) status = '검토자 참여 대기중 — [링크 복사]로 공유하세요.'
+      else if (!g.ready) status = '기준값(서로 다른 숫자 3자리)을 입력하고 확정하세요.'
+      else if (!g.started) status = '검토자 기준값 입력 대기중…'
+      else if (g.result) status = '검토 완료'
+      else status = g.myTurn ? '▶ 입력 차례입니다. B23에 입력 후 Enter' : '검토자 입력 대기중…'
+      c.A9 = muted(status)
+      c.A9.cls = 'status'
+      if (g.opp && g.opp.round > g.round) {
+        c.A10 = { v: '검토자가 재검토를 요청했습니다.', cls: 'status', span: 3 }
+        c.D10 = link('수락', () => {
+          g.acceptRematch()
+          setMsg('')
+        }, 'btn')
       }
-    }
-    c.A22 = { v: '합계', cls: 'total center' }
-    ;['B', 'C', 'F', 'H', 'I', 'L'].forEach((k) => (c[k + 22] = { v: '', cls: 'total' }))
-    c.D22 = { v: sum.ms, cls: 'num total', f: '=SUM(D13:D21)' }
-    c.E22 = { v: sum.mb, cls: 'num total', f: '=SUM(E13:E21)' }
-    c.J22 = { v: sum.ts, cls: 'num total', f: '=SUM(J13:J21)' }
-    c.K22 = { v: sum.tb, cls: 'num total', f: '=SUM(K13:K21)' }
 
-    // 입력 행
-    c.A23 = hdr('입력')
-    c.B23 = {
-      cls: 'editable' + (g.myTurn ? ' turn' : ''),
-      input: {
-        value: guessInput,
-        onChange: (v) => setGuessInput(digits(v)),
-        onEnter: submitGuess,
-        maxLength: 3,
-        inputMode: 'numeric',
-        disabled: !g.myTurn,
-        placeholder: g.myTurn ? '3자리' : '',
-      },
-    }
-    c.C23 = link('제출', submitGuess, 'btn' + (g.myTurn ? '' : ' off'))
-    if (msg) c.D23 = { v: msg, cls: 'down', span: 3 }
+      // 표
+      renderTable(c, g.mine, g.theirs, g.firstIsMe ? '초' : '말', g.firstIsMe ? '말' : '초', '제출값', '검토자 값')
 
-    // 결과 (입력 행 오른쪽)
-    if (g.result) {
-      const label = { win: '승인 (승리)', lose: '반려 (패배)', draw: '보류 (무승부)' }[g.result]
-      c.H23 = hdr('결과')
-      c.I23 = { v: label, span: 2, cls: 'bold ' + (g.result === 'win' ? 'up' : g.result === 'lose' ? 'down' : '') }
-      c.H24 = hdr('검토자값')
-      c.I24 = { v: g.oppSecret ?? '확인 중…', cls: 'num' }
-      if (!(g.opp && g.opp.round > g.round)) c.L23 = link('재검토 요청', g.requestRematch, 'btn')
-    } else if (g.opp && g.round > g.opp.round) {
-      c.H23 = { v: '재검토 요청됨 — 검토자 수락 대기중', cls: 'status', span: 5 }
+      // 입력 행
+      c.A23 = hdr('입력')
+      c.B23 = {
+        cls: 'editable' + (g.myTurn ? ' turn' : ''),
+        input: {
+          value: guessInput,
+          onChange: (v) => setGuessInput(digits(v)),
+          onEnter: submitGuess,
+          maxLength: 3,
+          inputMode: 'numeric',
+          disabled: !g.myTurn,
+          placeholder: g.myTurn ? '3자리' : '',
+        },
+      }
+      c.C23 = link('제출', submitGuess, 'btn' + (g.myTurn ? '' : ' off'))
+      if (msg) c.D23 = { v: msg, cls: 'down', span: 3 }
+
+      // 결과 (입력 행 오른쪽)
+      if (g.result) {
+        const label = { win: '승인 (승리)', lose: '반려 (패배)', draw: '보류 (무승부)' }[g.result]
+        c.H23 = hdr('결과')
+        c.I23 = { v: label, span: 2, cls: 'bold ' + (g.result === 'win' ? 'up' : g.result === 'lose' ? 'down' : '') }
+        c.H24 = hdr('검토자값')
+        c.I24 = { v: g.oppSecret ?? '확인 중…', cls: 'num' }
+        if (!(g.opp && g.opp.round > g.round)) c.L23 = link('재검토 요청', g.requestRematch, 'btn')
+      } else if (g.opp && g.round > g.opp.round) {
+        c.H23 = { v: '재검토 요청됨 — 검토자 수락 대기중', cls: 'status', span: 5 }
+      }
     }
     if (msg && !c.D23) c.D9 = { v: msg, cls: 'down', span: 6 }
   }
   if (!room && msg) c.A12 = { v: msg, cls: 'down', span: 6 }
 
   const cells = sheet === 'main' ? c : bossCells(today)
-  const status = sheet === 'main' && g.started && !g.result && !g.myTurn ? '계산 중...' : '준비'
+  const status = sheet === 'main' && !isSpec && g.started && !g.result && !g.myTurn ? '계산 중...' : '준비'
 
   return (
     <Shell
@@ -275,6 +338,22 @@ export default function App() {
       ]}
       status={status}
       user={name}
+      chat={
+        room
+          ? {
+              visible: chatVisible,
+              toggle: () => {
+                setSheet('main')
+                setChatOpen((o) => !(o && sheet === 'main'))
+              },
+              close: () => setChatOpen(false),
+              messages: g.chat,
+              unread,
+              send: g.sendChat,
+              myId,
+            }
+          : null
+      }
     />
   )
 }
