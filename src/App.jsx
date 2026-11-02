@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Shell from './Shell'
 import { bossCells } from './boss'
 import { useRoom } from './useRoom'
-import { transportMode } from './transport'
+import { transportMode, serverHost, configWarning } from './transport'
 import { isValid, resultText, MAX_INNINGS } from './game'
 
 const FILE_NAME = 'Q4_실적분석_최종.xlsx'
@@ -133,6 +133,8 @@ export default function App() {
     c.A9 = muted('※ 공유받은 링크로 들어오면 문서코드가 자동 입력됩니다.')
     c.A10 = muted('※ Esc: 다른 시트로 전환')
     if (transportMode === 'local') c.A11 = muted('※ 로컬 테스트 모드: 같은 브라우저의 다른 탭끼리만 연결됩니다.')
+    else c.A11 = muted(`※ 서버: ${serverHost}`)
+    if (configWarning) c.A13 = { v: '⚠ ' + configWarning, cls: 'down', span: 10 }
   } else {
     const oppName = g.opp?.name || '대기중'
     c.A4 = hdr('문서코드')
@@ -153,7 +155,7 @@ export default function App() {
       cls: g.conn === 'SUBSCRIBED' && !g.full ? '' : 'down',
     }
     c.F6 = { v: `${g.round}차`, cls: 'muted' }
-    if (g.connErr) c.H6 = { v: g.connErr, cls: 'down', span: 6 }
+    if (g.connErr) c.H6 = { v: `${g.connErr} (${serverHost})`, cls: 'down', span: 8 }
 
     // 기준값(비밀 숫자)
     c.A8 = hdr('기준값')

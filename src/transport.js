@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = import.meta.env.VITE_SUPABASE_URL
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const URL = (import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/\/+$/, '')
+const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
+
+// 화면 진단용 (키는 표시하지 않음)
+export const serverHost = URL.replace(/^https?:\/\//, '')
+export const configWarning = !URL
+  ? ''
+  : !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(URL)
+    ? 'URL 형식 오류: https://프로젝트ID.supabase.co 형태여야 합니다'
+    : !/^(sb_publishable_|eyJ)/.test(KEY)
+      ? '키 형식 오류: sb_publishable_ 또는 eyJ 로 시작하는 공개 키를 넣으세요'
+      : ''
 
 // 환경변수가 없으면 같은 브라우저의 탭끼리만 통신하는 로컬 테스트 모드로 동작합니다.
 export const transportMode = URL && KEY ? 'supabase' : 'local'
