@@ -80,7 +80,7 @@ export default function App() {
   const [guessInput, setGuessInput] = useState('')
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
-  const [chatOpen, setChatOpen] = useState(true)
+  const [chatOpen, setChatOpen] = useState(() => window.innerWidth > 760)
   const [seen, setSeen] = useState(0)
   const g = useRoom(room, name)
   const isSpec = g.role === 'spectator'
@@ -261,7 +261,7 @@ export default function App() {
       if (!g.ready) {
         c.B8 = {
           cls: 'editable',
-          input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: DIGITS, inputMode: 'numeric', placeholder: '3자리' },
+          input: { value: secretInput, onChange: (v) => setSecretInput(digits(v)), onEnter: submitSecret, type: 'password', maxLength: DIGITS, inputMode: 'numeric', placeholder: `${DIGITS}자리` },
         }
         c.C8 = link('확정', submitSecret, 'btn')
       } else {

@@ -42,15 +42,17 @@ body {
 
 /* 리본 */
 .ribbon { background: var(--ribbon); border-bottom: 1px solid #d6d6d6; flex-shrink: 0; }
-.ribbon-tabs { display: flex; align-items: flex-end; height: 30px; padding: 0 6px; background: #fff; }
-.rtab { padding: 6px 11px; font-size: 12px; color: #333; cursor: default; position: relative; }
+.ribbon-tabs { display: flex; align-items: flex-end; height: 30px; padding: 0 6px; background: #fff; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.ribbon-tabs::-webkit-scrollbar { display: none; }
+.rtab { white-space: nowrap; flex-shrink: 0; padding: 6px 11px; font-size: 12px; color: #333; cursor: default; position: relative; }
 .rtab.file { color: #333; }
 .rtab.active { color: var(--green); font-weight: 600; }
 .rtab.active::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; background: var(--green); border-radius: 2px; }
 .rtab-spacer { flex: 1; }
-.rtab-share { margin: 0 6px 4px; padding: 3px 12px; border-radius: 4px; background: var(--green); color: #fff; font-size: 11px; }
-.ribbon-body { display: flex; height: 92px; padding: 4px 4px 0; overflow: hidden; }
-.rgroup { display: flex; gap: 4px; padding: 2px 10px 18px; position: relative; border-right: 1px solid #dcdcdc; flex-direction: row; flex-wrap: wrap; align-content: flex-start; max-width: 300px; }
+.rtab-share { white-space: nowrap; flex-shrink: 0; margin: 0 6px 4px; padding: 3px 12px; border-radius: 4px; background: var(--green); color: #fff; font-size: 11px; }
+.ribbon-body { display: flex; height: 92px; padding: 4px 4px 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.ribbon-body::-webkit-scrollbar { display: none; }
+.rgroup { flex-shrink: 0; display: flex; gap: 4px; padding: 2px 10px 18px; position: relative; border-right: 1px solid #dcdcdc; flex-direction: row; flex-wrap: wrap; align-content: flex-start; max-width: 300px; }
 .rgroup:has(.rrow) { flex-direction: column; flex-wrap: nowrap; }
 .rlabel { position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; color: #666; font-size: 10.5px; }
 .rbig { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 6px; font-size: 11px; }
@@ -78,7 +80,7 @@ body {
 
 /* 메모(채팅) */
 .main-area { flex: 1; display: flex; min-height: 0; }
-.rtab-memo { margin: 0 2px 4px; padding: 3px 12px; border-radius: 4px; border: 1px solid #c8c8c8; background: #fff; color: #333; font-size: 11px; cursor: pointer; position: relative; }
+.rtab-memo { white-space: nowrap; flex-shrink: 0; margin: 0 2px 4px; padding: 3px 12px; border-radius: 4px; border: 1px solid #c8c8c8; background: #fff; color: #333; font-size: 11px; cursor: pointer; position: relative; }
 .rtab-memo.on { border-color: var(--green); color: var(--green); }
 .rtab-memo .badge { position: absolute; top: -6px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: #c42b1c; color: #fff; font-size: 9px; display: grid; place-items: center; }
 .chatpane { width: 300px; flex-shrink: 0; border-left: 1px solid #d6d6d6; background: #fafafa; display: flex; flex-direction: column; min-height: 0; user-select: text; }
@@ -152,6 +154,10 @@ body {
 .zbar span { position: absolute; left: 50%; top: -4px; width: 3px; height: 10px; background: #444; }
 
 @media (max-width: 760px) {
-  .hide-sm, .search, .qa, .sb-acc { display: none; }
-  .chatpane { position: fixed; right: 0; top: 152px; bottom: 50px; width: 85vw; z-index: 10; box-shadow: -4px 0 12px rgba(0,0,0,.15); }
+  .hide-sm, .search, .qa, .sb-acc, .autosave, .tb-right .win { display: none; }
+  .ribbon-body { height: 0; padding: 0; }
+  .tb-title { font-size: 11px; }
+  .chatpane { position: fixed; right: 0; top: 90px; bottom: 50px; width: 88vw; z-index: 10; box-shadow: -4px 0 12px rgba(0,0,0,.15); }
+  .rtab-memo { position: sticky; right: 0; box-shadow: -10px 0 8px #fff; }
+  .rtab-share { display: none; }
 }
