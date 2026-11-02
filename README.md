@@ -1,0 +1,29 @@
+# q4-report
+
+스프레드시트처럼 보이는 1:1 실시간 숫자야구.
+
+## 규칙
+- 각자 서로 다른 숫자 3자리(기준값)를 정하고, 번갈아 상대 숫자를 맞힙니다.
+- 이닝제: 초(선공) → 말(후공). 선공이 3S를 내도 같은 이닝 말에 후공에게 마지막 기회가 있습니다(둘 다 맞히면 무승부).
+- 9회까지 아무도 못 맞히면 무승부. 재검토(재대결) 시 선공이 바뀝니다.
+- `Esc`: 매출현황 시트로 전환(보스키). 내 기준값은 B8 셀을 클릭하면 수식 입력줄에 보입니다.
+
+## 실행
+```bash
+npm install
+npm run dev     # 환경변수가 없으면 같은 브라우저 탭끼리만 연결되는 로컬 테스트 모드
+npm test        # 판정 로직 테스트
+```
+
+## 배포 (Vercel + Supabase)
+1. supabase.com 에서 프로젝트 생성 → Project Settings → API 에서 Project URL, anon public key 확인
+2. Vercel 에서 이 저장소 Import → Environment Variables 에 추가
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Deploy. 이후 push 할 때마다 자동 배포됩니다.
+
+Supabase Realtime 의 Broadcast/Presence 만 사용하므로 DB 테이블은 필요 없습니다.
+
+## 알려진 한계
+- 경기 중 새로고침하면 그 판 기록이 사라지고 새 판으로 시작됩니다.
+- 비밀 숫자 판정은 각자 브라우저에서 하므로, 개발자도구로 조작하려면 가능은 합니다(친구끼리용).
