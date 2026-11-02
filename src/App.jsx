@@ -82,7 +82,10 @@ export default function App() {
   }
 
   const copyLink = async () => {
-    const url = `${location.origin}${location.pathname}?doc=${room}`
+    // Vercel이 빌드 시 넣어주는 공개 Production 도메인 우선 (배포별 보호 주소 회피)
+    const prod = import.meta.env.VITE_VERCEL_PROJECT_PRODUCTION_URL
+    const base = prod ? `https://${prod}` : location.origin
+    const url = `${base}${location.pathname}?doc=${room}`
     try {
       await navigator.clipboard.writeText(url)
     } catch {
